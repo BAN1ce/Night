@@ -1,8 +1,6 @@
 package src
 
 import (
-	"fmt"
-	"live/src/cluster"
 	"live/src/mqtt/pack"
 	"live/src/mqtt/sub"
 	"live/src/utils"
@@ -24,9 +22,10 @@ func handle(c *Client, p *pack.Pack) {
 	case pack.SUBSCRIBE:
 		subHandle(c, p)
 
+	case pack.UNSUBSCRIBE:
+		unSubHandle(c, p)
 	case pack.PINGREQ:
 		pingHandle(c, p)
-
 	}
 
 }
@@ -35,61 +34,54 @@ func connectHandle(c *Client, p *pack.Pack) {
 
 	//todo 重名客户端
 
-	fmt.Println("Connect Handle")
 	connectPack := pack.NewConnectPack(p)
 	connack := pack.NewConnAckPack(0)
 
 	c.clientIdentifier = connectPack.ClientIdentifier
+
+	// 客户端连接成功
+	c.writeChan <- connack
+
 	if connectPack.CleanSession != true {
 
 		if oldClient, ok := getClient(c.clientIdentifier); ok {
 			//todo 恢复session中的消息
+			// will message handle
 			c.session = oldClient.session
-			fmt.Println("Get old session")
 			c.PubStoreSession()
 		}
 	}
 	clientJoinServer(connectPack.ClientIdentifier, c)
-	// 客户端连接成功
-	c.writeChan <- connack
+
 }
 func pubHandle(c *Client, p *pack.Pack) {
 	pubPack := pack.NewPubPack(p)
 
-	fmt.Println("pubpack", pubPack, string(pubPack.TopicName))
-
 	topicSlice := strings.Split(string(pubPack.TopicName), "/")
 	nodes := sub.GetWildCards(topicSlice)
 
-	nodeClients := sub.GetHashSub(string(pubPack.TopicName))
+	clients := sub.GetHashSub(string(pubPack.TopicName))
 	if pubPack.Qos == 1 {
 		pubAckPack := pack.NewEmptyPubAckPack(pubPack.Identifier)
 		// 返回pub ack
 		c.writeChan <- pubAckPack
-		for _, node := range nodes {
-			node.Clients.Mu.RLock()
-
-			for clientIdentifier, _ := range node.Clients.M {
-				fmt.Println("Wildcard pub", clientIdentifier)
-				if c, ok := getClient(clientIdentifier); ok {
-					c.Pub(pubPack)
-				}
+	}
+	for _, node := range nodes {
+		node.Clients.Mu.RLock()
+		for clientIdentifier, _ := range node.Clients.M {
+			if c, ok := getClient(clientIdentifier); ok {
+				c.Pub(pubPack, node.Topic)
 			}
-			node.Clients.Mu.RUnlock()
 		}
+		node.Clients.Mu.RUnlock()
+	}
 
-		for nodeName, clients := range nodeClients {
-			if nodeName == LocalServer.name {
-				for _, clientIdentifier := range clients {
-					if c, ok := getClient(clientIdentifier); ok {
-						c.Pub(pubPack)
-					}
-				}
-			}
+	for _, clientIdentifier := range clients {
+		if c, ok := getClient(clientIdentifier); ok {
+			c.Pub(pubPack, string(pubPack.TopicName))
 		}
 	}
 
-	//todo 转发给用户
 }
 
 func pubAckHandle(c *Client, p *pack.Pack) {
@@ -108,21 +100,40 @@ func subHandle(c *Client, p *pack.Pack) {
 		if qos >= 2 {
 			qos = 1
 		}
-		// 添加订阅记录
-		// todo 广播给集群订阅关系
 		qoss = append(qoss, qos)
-		c.session.SubTopicsQos[topic] = qos
+		c.session.SubTopic(topic, qos)
 		topicSlice := strings.Split(topic, "/")
 		// 客户端模糊订阅和绝对订阅分开记录
 		if utils.HasWildcard(topicSlice) {
-			fmt.Println("sub", c.clientIdentifier)
 			sub.AddTreeSub(topicSlice, c.clientIdentifier)
 		} else {
-			sub.AddHashSub(topic, cluster.LocalNodeName, c.clientIdentifier)
+			sub.AddHashSub(topic, c.clientIdentifier)
 		}
 	}
 	subAck := pack.NewSubAck(subPack.Identifier, qoss)
 	c.writeChan <- subAck
+}
+
+/**
+从订阅中删除订阅节点，session中删除topic
+*/
+func unSubHandle(c *Client, p *pack.Pack) {
+	unsubPack := pack.NewUnSubPack(p)
+
+	for _, topic := range unsubPack.Topics {
+
+		topicSlice := strings.Split(topic, "/")
+
+		if utils.HasWildcard(topicSlice) {
+			sub.DeleteTreeSub(topicSlice, c.clientIdentifier)
+		} else {
+			sub.DeleteHashSub(topic, c.clientIdentifier)
+		}
+		c.session.UnsubTopic(topic)
+	}
+	unsubAckPack := pack.NewUnSubAck(unsubPack.Identifier)
+
+	c.writeChan <- unsubAckPack
 
 }
 
