@@ -2,6 +2,7 @@ package sub
 
 import (
 	"errors"
+	"strings"
 	"sync"
 )
 
@@ -60,6 +61,7 @@ type Node struct {
 	topicSection string
 	ChildNodes   *childNodes
 	Clients      *nodeClients
+	Topic        string
 }
 
 /**
@@ -76,7 +78,7 @@ func newNode(topicSection string) *Node {
 }
 
 /**
-topic 切片转话成树，树的叶子节点存入clientID
+Topic 切片转话成树，树的叶子节点存入clientID
 */
 func topicSliceBeTree(topicsSlice []string, clientIdentifier string) (*Node, error) {
 
@@ -232,6 +234,7 @@ func GetWildCards(topicSlice []string) []*Node {
 			if ok {
 				node, ok := GetTreeSub(tmp)
 				if ok {
+					node.Topic = strings.Join(tmp, "/")
 					subNodes = append(subNodes, node)
 				}
 
@@ -246,8 +249,10 @@ func GetWildCards(topicSlice []string) []*Node {
 		copy(searchTopicSlice, topicSlice[0:i])
 		_, ok := GetTreeSub(searchTopicSlice)
 		if ok {
-			node, ok := GetTreeSub(append(searchTopicSlice, "#"))
+			tmp := append(searchTopicSlice, "#")
+			node, ok := GetTreeSub(tmp)
 			if ok {
+				node.Topic = strings.Join(tmp, "/")
 				subNodes = append(subNodes, node)
 			}
 		} else {

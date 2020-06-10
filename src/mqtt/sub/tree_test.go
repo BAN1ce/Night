@@ -150,7 +150,7 @@ func TestTreeDiffClientSub(t *testing.T) {
 			}
 
 		} else {
-			t.Error("topic can not find sub ", topic)
+			t.Error("Topic can not find sub ", topic)
 		}
 
 	}
