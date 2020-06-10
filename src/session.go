@@ -3,7 +3,6 @@ package src
 import (
 	"container/list"
 	"context"
-	"fmt"
 	"live/src/mqtt/pack"
 	"sync"
 	"time"
@@ -20,8 +19,10 @@ type session struct {
 	recIdentifies      map[string]bool
 	recIdentifierMutex sync.RWMutex
 
-	pubWaitMutex sync.RWMutex
-	pubWaitQueue *list.List
+	pubWaitMutex    sync.RWMutex
+	pubWaitQueue    *list.List
+	pubWaitInitTime time.Duration
+	pubWaitTime     time.Duration
 
 	mutex      sync.RWMutex
 	identifier uint16
@@ -30,7 +31,6 @@ type session struct {
 
 	hasPubTimer bool
 	pubTimer    *time.Timer
-	pubWaitTime time.Duration
 }
 
 func newSession() *session {
@@ -39,6 +39,7 @@ func newSession() *session {
 	s.recIdentifies = make(map[string]bool)
 	s.recWaitList = list.New()
 	s.pubWaitQueue = list.New()
+	s.pubWaitInitTime = 2 * time.Second
 
 	return s
 }
@@ -97,7 +98,7 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 	} else {
 
 		s.hasPubTimer = true
-		s.pubWaitTime = 5 * time.Second
+		s.pubWaitTime = s.pubWaitInitTime
 		s.pubTimer = time.NewTimer(s.pubWaitTime)
 		go func() {
 			for {
@@ -109,7 +110,6 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 
 				case <-s.pubTimer.C:
 					s.pubWaitMutex.RLock()
-					fmt.Println("timer exec")
 					if s.pubWaitQueue.Len() > 0 && s.hasPubTimer == true {
 						s.pubWaitTime *= 2
 						s.pubTimer.Reset(s.pubWaitTime)
@@ -118,7 +118,6 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 					} else {
 						s.hasPubTimer = false
 						s.pubWaitMutex.RUnlock()
-						fmt.Println("timer close")
 						return
 					}
 				}
@@ -130,8 +129,11 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 
 func (s *session) PubListPack(c *Client) {
 
-	fmt.Println("pub list", time.Now().Format("2006-01-02 15:04:05"), c.clientIdentifier)
 	s.pubWaitMutex.RLock()
+	// 队列中有效性时重置定时器
+	if s.pubWaitQueue.Len() > 0 {
+		s.pubTimer.Reset(s.pubWaitInitTime)
+	}
 	for p := s.pubWaitQueue.Front(); p != nil; p = p.Next() {
 		if pub, ok := p.Value.(*pack.PubPack); ok {
 			c.writeChan <- pub
@@ -141,10 +143,21 @@ func (s *session) PubListPack(c *Client) {
 }
 
 func (s *session) getTopicQos(topic string) uint8 {
-
 	if qos, ok := s.SubTopicsQos[topic]; ok {
 		return qos
 	}
 	return 0
+}
+
+func (s *session) SubTopic(topic string, qos uint8) {
+	s.mutex.Lock()
+	s.SubTopicsQos[topic] = qos
+	s.mutex.Unlock()
+}
+
+func (s *session) UnsubTopic(topic string) {
+	s.mutex.Lock()
+	delete(s.SubTopicsQos, topic)
+	s.mutex.Unlock()
 
 }
