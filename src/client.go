@@ -3,7 +3,6 @@ package src
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"github.com/google/uuid"
 	"live/src/mqtt/pack"
 	"live/src/utils"
@@ -41,7 +40,7 @@ func NewClient(conn net.Conn, clientDone chan<- string) *Client {
 	c.isOnline = true
 	c.isStop = true
 	c.session = newSession()
-
+	c.hbTimeout = 30 * time.Second
 	return c
 }
 
@@ -140,7 +139,6 @@ func (c *Client) Stop() {
 		c.mutex.Unlock()
 		return
 	} else {
-		fmt.Println("Client Stop", c.clientIdentifier)
 		c.isStop = true
 		c.cancel()
 		c.isOnline = false
@@ -149,12 +147,12 @@ func (c *Client) Stop() {
 
 }
 
-func (c *Client) Pub(pubPack *pack.PubPack) {
+func (c *Client) Pub(pubPack *pack.PubPack, subTopic string) {
 
 	emptyPubPack := pack.NewEmptyPubPack()
 	emptyPubPack.TopicName = pubPack.TopicName
 	emptyPubPack.Payload = pubPack.Payload
-	emptyPubPack.Qos = c.session.getTopicQos(string(pubPack.TopicName))
+	emptyPubPack.Qos = c.session.getTopicQos(subTopic)
 	c.mutex.RLock()
 	if emptyPubPack.Qos != 0 {
 		emptyPubPack.Identifier = utils.Uint16ToBytes(c.session.GetNewIdentifier())
