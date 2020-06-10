@@ -2,7 +2,6 @@ package src
 
 import (
 	"bufio"
-	"fmt"
 )
 
 
@@ -19,7 +18,6 @@ func Input() bufio.SplitFunc {
 		if atEOF {
 			return
 		}
-		fmt.Println(data,"data")
 		if len(data) >= 2 {
 			headLength := 1
 			multiplier := 1
