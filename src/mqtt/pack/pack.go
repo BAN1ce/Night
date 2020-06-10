@@ -1,7 +1,5 @@
 package pack
 
-import "fmt"
-
 const (
 	RESERVED = iota
 	CONNECT
@@ -42,7 +40,6 @@ type WritePack interface {
 }
 
 func NewPack(data []byte) *Pack {
-	fmt.Println("Rec", data)
 	pack := new(Pack)
 	remainLength, fixHeadLength := getRemainLength(data)
 
@@ -92,7 +89,6 @@ func Encode(p WritePack) []byte {
 	if pl != 0 {
 		responseData = append(responseData, payload...)
 	}
-	fmt.Println("Send", responseData)
 	return responseData
 
 }
