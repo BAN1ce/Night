@@ -8,13 +8,12 @@ import (
 
 var localRetainTree *retainNode
 
+/**
+retain message
+*/
 type Message struct {
-	payload []byte
-	qos     uint8
-}
-type retainMessage struct {
-	messages map[string]*Message
-	mutex    sync.RWMutex
+	Payload []byte
+	Qos     uint8
 }
 
 /**
@@ -29,10 +28,11 @@ type childRetainNodes struct {
 订阅树中的节点
 */
 type retainNode struct {
-	topicSection string
-	ChildNodes   *childRetainNodes
-	m            *Message
-	topic        string
+	topicSection string            // 子topic
+	ChildNodes   *childRetainNodes // 子节点的集合
+	m            *Message          // retain message
+	topic        string            // 节点的完整topic
+	class        int               //表示节点的高度，根节点高度为0
 }
 
 func init() {
@@ -50,8 +50,8 @@ func newRetainNode(topicSection string) *retainNode {
 }
 
 /**
-
- */
+创建一个子节点集合
+*/
 func newChildRetainNodes() *childRetainNodes {
 
 	n := new(childRetainNodes)
@@ -59,18 +59,14 @@ func newChildRetainNodes() *childRetainNodes {
 	return n
 }
 
-func newRetainMessage() *retainMessage {
-
-	m := new(retainMessage)
-	m.messages = make(map[string]*Message)
-	return m
-}
-
+/**
+创建一个新message
+*/
 func NewMessage(payload []byte, qos uint8) *Message {
 
 	return &Message{
-		payload: payload,
-		qos:     qos,
+		Payload: payload,
+		Qos:     qos,
 	}
 }
 
@@ -80,11 +76,12 @@ Topic 设置 Message
 func SetMessage(topic string, m *Message) {
 
 	topicSlice := strings.Split(topic, "/")
+	topicHigh := len(topicSlice)
 	queue := make([]*retainNode, 0)
 	queue = append(queue, localRetainTree)
 	i := 0
 	first := queue[0]
-	for len(queue) != 0 && i < len(topicSlice) {
+	for len(queue) != 0 && i < topicHigh {
 		first = queue[0]
 		queue = queue[1:]
 
@@ -92,13 +89,16 @@ func SetMessage(topic string, m *Message) {
 		if childNode, ok := first.ChildNodes.m[topicSlice[i]]; ok {
 			queue = append(queue, childNode)
 			i++
-			if i == len(topicSlice) {
+			// 如果子节点已经存在
+			if i == topicHigh {
 				childNode.topicSection = topicSlice[i-1]
 				childNode.topic = topic
 				childNode.m = m
+				childNode.class = i
 			}
 		} else {
-			if childTree, err := topicSliceBeRetainTree(topicSlice[i:], m, topic); err == nil {
+			// 如果子树不存在则创建一个子树连接到父结点上
+			if childTree, err := topicSliceBeRetainTree(topicSlice[i:], m, topic, i); err == nil {
 				first.ChildNodes.m[topicSlice[i]] = childTree
 			}
 		}
@@ -108,9 +108,9 @@ func SetMessage(topic string, m *Message) {
 }
 
 /**
-Topic 切片转话成树，树的叶子节点存入clientID
+创建一个完整或不完整的topic的子树
 */
-func topicSliceBeRetainTree(topicsSlice []string, m *Message, topic string) (*retainNode, error) {
+func topicSliceBeRetainTree(topicsSlice []string, m *Message, topic string, class int) (*retainNode, error) {
 
 	if len(topicsSlice) == 0 {
 		return nil, errors.New("topicSlice length can not be 0")
@@ -120,6 +120,8 @@ func topicSliceBeRetainTree(topicsSlice []string, m *Message, topic string) (*re
 	var last *retainNode
 	for i, t := range topicsSlice {
 		n := newRetainNode(t)
+		class++
+		n.class = class
 		if i == 0 {
 			first = n
 		} else {
@@ -134,7 +136,7 @@ func topicSliceBeRetainTree(topicsSlice []string, m *Message, topic string) (*re
 }
 
 /**
-获取topic在订阅树中保存的节点，未找到返回false
+获取订阅topic下的所有retain message
 */
 func GetMessages(topicSlice []string) map[string]*Message {
 
@@ -142,19 +144,19 @@ func GetMessages(topicSlice []string) map[string]*Message {
 	queue := make([]*retainNode, 0)
 	queue = append(queue, localRetainTree)
 	messages := make(map[string]*Message)
-	i := 0
+	subTopicHigh := len(topicSlice)
 	first := queue[0]
 	flag := false
 	class := false
-	for len(queue) != 0 && i < len(topicSlice) {
+	for len(queue) != 0 {
 		first = queue[0]
 		queue = queue[1:]
 
 		first.ChildNodes.mu.RLock()
-		if topicSlice[i] == "#" {
+		if first.class < subTopicHigh && topicSlice[first.class] == "#" {
 			flag = true
 		}
-		if topicSlice[i] == "+" {
+		if first.class < subTopicHigh && topicSlice[first.class] == "+" {
 			class = true
 		}
 		if flag == true {
@@ -166,23 +168,23 @@ func GetMessages(topicSlice []string) map[string]*Message {
 			}
 		} else if class == true {
 			for _, v := range first.ChildNodes.m {
-				queue = append(queue, v)
-				if v.m != nil {
+				if v.class != subTopicHigh {
+					queue = append(queue, v)
+				}
+				if v.m != nil && v.class == subTopicHigh {
 					messages[v.topic] = v.m
 				}
 			}
 			class = false
-			i++
 		} else {
 
-			if childNode, ok := first.ChildNodes.m[topicSlice[i]]; ok {
-				if (i + 1) == len(topicSlice) {
+			if childNode, ok := first.ChildNodes.m[topicSlice[first.class]]; ok {
+				if childNode.class == subTopicHigh {
 					if childNode.m != nil {
 						messages[childNode.topic] = childNode.m
 					}
 				} else {
 					queue = append(queue, childNode)
-					i++
 				}
 			}
 		}

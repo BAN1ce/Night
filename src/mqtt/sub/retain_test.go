@@ -82,44 +82,35 @@ func TestSetMessage(t *testing.T) {
 多条retain消息，通配符订阅
 */
 func TestSubWildcardMessage(t *testing.T) {
-	m := GetMessages(strings.Split("#", "/"))
-	if len(m) == 1001 {
-		t.Log("SUCCESS")
-	} else {
-		k := make(map[string]bool)
-		for i, _ := range m {
-			if _, ok := k[i]; ok {
-				t.Error("Retain Wildcard Exists", i)
-			} else {
-				k[i] = true
-			}
+
+	SetMessage("a/b/c", nil)
+	test := make(map[string]int)
+
+	test["1/1/1"] = 1
+
+	test["+/1/1"] = 10
+	test["1/+/1"] = 10
+	test["1/1/+"] = 10
+
+	test["+/+/1"] = 100
+	test["1/+/+"] = 100
+	test["+/1/+"] = 100
+
+	test["+/+/+"] = 1000
+
+	test["1/#"] = 100
+	test["1/1/#"] = 10
+	test["#"] = 1000
+
+
+	for i, v := range test {
+		m := GetMessages(strings.Split(i, "/"))
+		if len(m) == v {
+			continue
+		} else {
+			t.Error(i, v, len(m), "+ Retain Fail")
 		}
-		t.Error("Retain Wildcard Sub Fail", len(m))
-	}
 
-	setMessage()
-	m = GetMessages(strings.Split("+/#", "/"))
-
-	if len(m) != 1001 {
-		t.Error("+ Fail", len(m))
-	}
-	m = GetMessages(strings.Split("1/+/1", "/"))
-
-	if len(m) != 10 {
-		t.Error(" + Fail 1/+/1", len(m))
-	}
-
-	setMessage()
-	m = GetMessages(strings.Split("+/+/1", "/"))
-
-	if len(m) != 100 {
-		t.Error(" + Fail +/+/1", len(m))
-	}
-
-	m = GetMessages(strings.Split("+/+/+", "/"))
-
-	if len(m) != 1001 {
-		t.Error(" + Fail +/+/+", len(m))
 	}
 
 }

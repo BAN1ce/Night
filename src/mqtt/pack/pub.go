@@ -23,9 +23,9 @@ func NewPubPack(p *Pack) *PubPack {
 
 	pubPack := new(PubPack)
 	pubPack.pack = p
-	pubPack.Dup = (p.FixedHeader.ByteOne & 0x01) == 1
+	pubPack.Dup = (p.FixedHeader.ByteOne & 0x08) == 1
 	pubPack.Qos = p.FixedHeader.ByteOne & 0x06 >> 1
-	pubPack.Retain = (p.FixedHeader.ByteOne & 0x08) == 1
+	pubPack.Retain = (p.FixedHeader.ByteOne & 0x01) == 1
 	plc := p.FixedHeader.FixLength
 	topicLength := utils.UtfLength(p.rawData[plc : plc+2])
 	plc += 2
