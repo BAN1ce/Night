@@ -34,9 +34,10 @@ func handle(c *Client, p *pack.Pack) {
 
 }
 
+/**
+客户端连接
+*/
 func connectHandle(c *Client, p *pack.Pack) {
-
-	//todo 重名客户端
 
 	connectPack := pack.NewConnectPack(p)
 	connack := pack.NewConnAckPack(0)
@@ -47,10 +48,7 @@ func connectHandle(c *Client, p *pack.Pack) {
 	c.writeChan <- connack
 
 	if connectPack.CleanSession != true {
-
 		if oldClient, ok := getClient(c.clientIdentifier); ok {
-			// will message handle
-
 			oldClient.Stop()
 			// 恢复session中的消息
 			c.session = oldClient.session
@@ -66,8 +64,11 @@ func connectHandle(c *Client, p *pack.Pack) {
 		}
 	}
 	clientJoinServer(connectPack.ClientIdentifier, c)
-
 }
+
+/**
+客户端发布消息
+*/
 func pubHandle(c *Client, p *pack.Pack) {
 	pubPack := pack.NewPubPack(p)
 
@@ -105,6 +106,9 @@ func pubHandle(c *Client, p *pack.Pack) {
 
 }
 
+/**
+客户端回复确认发布消息
+*/
 func pubAckHandle(c *Client, p *pack.Pack) {
 
 	//todo 从list中删除收到的ack发送消息
@@ -113,6 +117,10 @@ func pubAckHandle(c *Client, p *pack.Pack) {
 	c.session.pubAck(pubAckPack)
 
 }
+
+/**
+客户端订阅
+*/
 func subHandle(c *Client, p *pack.Pack) {
 
 	subPack := pack.NewSubPack(p)
@@ -143,7 +151,7 @@ func subHandle(c *Client, p *pack.Pack) {
 }
 
 /**
-从订阅中删除订阅节点，session中删除topic
+取消订阅
 */
 func unSubHandle(c *Client, p *pack.Pack) {
 	unsubPack := pack.NewUnSubPack(p)
@@ -175,6 +183,9 @@ func pingHandle(c *Client, p *pack.Pack) {
 	c.writeChan <- pingResp
 }
 
+/**
+断开连接
+*/
 func disconnect(c *Client, p *pack.Pack) {
 	c.DeleteWill()
 	c.Stop()
