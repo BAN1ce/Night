@@ -26,6 +26,10 @@ func handle(c *Client, p *pack.Pack) {
 		unSubHandle(c, p)
 	case pack.PINGREQ:
 		pingHandle(c, p)
+
+	case pack.DISCONNECT:
+		disconnect(c, p)
+
 	}
 
 }
@@ -45,10 +49,20 @@ func connectHandle(c *Client, p *pack.Pack) {
 	if connectPack.CleanSession != true {
 
 		if oldClient, ok := getClient(c.clientIdentifier); ok {
-			//todo 恢复session中的消息
 			// will message handle
+
+			oldClient.Stop()
+			// 恢复session中的消息
 			c.session = oldClient.session
+			c.session.ToValid()
 			c.PubStoreSession()
+		}
+	}
+
+	if connectPack.WillFlag {
+		c.SetWill(connectPack.WillTopic, connectPack.WillPayload, connectPack.WillQos)
+		if connectPack.WillRetain {
+			sub.SetMessage(c.willTopic, sub.NewMessage(c.willPayload, c.willQos))
 		}
 	}
 	clientJoinServer(connectPack.ClientIdentifier, c)
@@ -57,10 +71,8 @@ func connectHandle(c *Client, p *pack.Pack) {
 func pubHandle(c *Client, p *pack.Pack) {
 	pubPack := pack.NewPubPack(p)
 
-	topicSlice := strings.Split(string(pubPack.TopicName), "/")
-	nodes := sub.GetWildCards(topicSlice)
+	nodes, clients := sub.GetSub(string(pubPack.TopicName))
 
-	clients := sub.GetHashSub(string(pubPack.TopicName))
 	if pubPack.Qos == 1 {
 		pubAckPack := pack.NewEmptyPubAckPack(pubPack.Identifier)
 		// 返回pub ack
@@ -79,6 +91,15 @@ func pubHandle(c *Client, p *pack.Pack) {
 	for _, clientIdentifier := range clients {
 		if c, ok := getClient(clientIdentifier); ok {
 			c.Pub(pubPack, string(pubPack.TopicName))
+		}
+	}
+
+	// 记录 retain 消息
+	if pubPack.Retain {
+		if len(pubPack.Payload) == 0 {
+			sub.SetMessage(string(pubPack.TopicName), nil)
+		} else {
+			sub.SetMessage(string(pubPack.TopicName), sub.NewMessage(pubPack.Payload, pubPack.Qos))
 		}
 	}
 
@@ -104,10 +125,17 @@ func subHandle(c *Client, p *pack.Pack) {
 		c.session.SubTopic(topic, qos)
 		topicSlice := strings.Split(topic, "/")
 		// 客户端模糊订阅和绝对订阅分开记录
-		if utils.HasWildcard(topicSlice) {
-			sub.AddTreeSub(topicSlice, c.clientIdentifier)
-		} else {
-			sub.AddHashSub(topic, c.clientIdentifier)
+		sub.Sub(topic, c.clientIdentifier, topicSlice)
+
+		retainMessages := sub.GetMessages(topicSlice)
+
+		for topic, message := range retainMessages {
+			pubpack := pack.NewEmptyPubPack()
+			pubpack.Qos = message.Qos
+			pubpack.Payload = message.Payload
+			pubpack.TopicName = []byte(topic)
+			pubpack.Retain = true
+			c.Pub(pubpack, topic)
 		}
 	}
 	subAck := pack.NewSubAck(subPack.Identifier, qoss)
@@ -145,4 +173,32 @@ func pingHandle(c *Client, p *pack.Pack) {
 	pingResp := pack.NewPingResp()
 
 	c.writeChan <- pingResp
+}
+
+func disconnect(c *Client, p *pack.Pack) {
+	c.DeleteWill()
+	c.Stop()
+
+}
+
+func PubPackToSubClients(nodes []*sub.Node, clients []string, pubPack *pack.PubPack) {
+
+	go func() {
+		for _, node := range nodes {
+			node.Clients.Mu.RLock()
+			for clientIdentifier, _ := range node.Clients.M {
+				if c, ok := getClient(clientIdentifier); ok {
+					c.Pub(pubPack, node.Topic)
+				}
+			}
+			node.Clients.Mu.RUnlock()
+		}
+
+		for _, clientIdentifier := range clients {
+			if c, ok := getClient(clientIdentifier); ok {
+				c.Pub(pubPack, string(pubPack.TopicName))
+			}
+		}
+
+	}()
 }
