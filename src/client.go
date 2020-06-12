@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"live/src/mqtt/pack"
+	"live/src/mqtt/sub"
 	"live/src/utils"
 	"log"
 	"net"
@@ -28,6 +29,10 @@ type Client struct {
 	UserName         string
 	session          *session
 	ctx              context.Context
+	hasWill          bool
+	willTopic        string
+	willPayload      []byte
+	willQos          uint8
 }
 
 func NewClient(conn net.Conn, clientDone chan<- string) *Client {
@@ -42,6 +47,24 @@ func NewClient(conn net.Conn, clientDone chan<- string) *Client {
 	c.session = newSession()
 	c.hbTimeout = 30 * time.Second
 	return c
+}
+func (c *Client) SetWill(willTopic string, willPayload []byte, willQos uint8) {
+	c.mutex.Lock()
+	c.willTopic = willTopic
+	c.hasWill = true
+	c.willPayload = willPayload
+	c.willQos = willQos
+	c.mutex.Unlock()
+}
+
+func (c *Client) DeleteWill() {
+
+	c.mutex.Lock()
+	c.hasWill = false
+	c.willQos = 0
+	c.willPayload = nil
+	c.willTopic = ""
+	c.mutex.Unlock()
 }
 
 func (c *Client) copySession(s *session) {
@@ -60,6 +83,31 @@ func (c *Client) Run(ctx context.Context) {
 		c.isStop = false
 	}
 	c.mutex.Unlock()
+}
+
+func (c *Client) Stop() {
+	c.mutex.Lock()
+	if c.isStop {
+		c.mutex.Unlock()
+		return
+	} else {
+		c.isStop = true
+		c.cancel()
+		c.isOnline = false
+		c.conn.Close()
+		c.session.offlineTime = time.Now()
+		// 如果有遗嘱消息，发布遗嘱消息
+		if c.hasWill {
+			nodes, clients := sub.GetSub(c.willTopic)
+			pubpack := pack.NewEmptyPubPack()
+			pubpack.TopicName = []byte(c.willTopic)
+			pubpack.Payload = c.willPayload
+			pubpack.Qos = c.willQos
+			PubPackToSubClients(nodes, clients, pubpack)
+		}
+		c.mutex.Unlock()
+	}
+	// 发送遗嘱消息
 }
 
 func (c *Client) input(ctx context.Context) {
@@ -118,33 +166,21 @@ func (c *Client) handleWrite(ctx context.Context) {
 		case m, ok := <-c.writeChan:
 
 			if ok {
-				conn := c.conn
-
-				if _, err := conn.Write(pack.Encode(m)); err != nil {
-					log.Println(err)
-				} else {
-					// 发送成功
+				c.mutex.RLock()
+				if c.isOnline {
+					if _, err := c.conn.Write(pack.Encode(m)); err != nil {
+						log.Println(err)
+					} else {
+						// 发送成功
+					}
 				}
+				c.mutex.RUnlock()
 			}
 
 
 
 		}
 	}
-}
-
-func (c *Client) Stop() {
-	c.mutex.Lock()
-	if c.isStop {
-		c.mutex.Unlock()
-		return
-	} else {
-		c.isStop = true
-		c.cancel()
-		c.isOnline = false
-		c.mutex.Unlock()
-	}
-
 }
 
 func (c *Client) Pub(pubPack *pack.PubPack, subTopic string) {
