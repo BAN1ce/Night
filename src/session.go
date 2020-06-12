@@ -31,12 +31,17 @@ type session struct {
 
 	hasPubTimer bool
 	pubTimer    *time.Timer
+	offlineTime time.Time
+
+	isExpired bool
 }
 
 func newSession() *session {
+
 	s := new(session)
 	s.SubTopicsQos = make(map[string]uint8)
 	s.recIdentifies = make(map[string]bool)
+	s.isExpired = false
 	s.recWaitList = list.New()
 	s.pubWaitQueue = list.New()
 	s.pubWaitInitTime = 2 * time.Second
@@ -44,8 +49,16 @@ func newSession() *session {
 	return s
 }
 
-func (s *session) Close() {
+func (s *session) Expired() {
+	s.mutex.Lock()
+	s.isExpired = true
+	s.mutex.Unlock()
+}
 
+func (s *session) ToValid() {
+	s.mutex.Lock()
+	s.isExpired = false
+	s.mutex.Unlock()
 }
 
 func (s *session) GetNewIdentifier() uint16 {
@@ -60,10 +73,29 @@ func (s *session) GetNewIdentifier() uint16 {
 
 func (s *session) PushPubQueue(pubPack *pack.PubPack, c *Client) {
 
-	//todo 检查队列的大小，超出进行修剪
+	// 检查队列的大小，超出进行修剪
 	s.pubWaitMutex.Lock()
-	pubPack.Dup = true
-	s.pubWaitQueue.PushBack(pubPack)
+	if !s.isExpired {
+		cfg := config.GetConfig()
+		if s.pubWaitQueue.Len() > cfg.maxPubQueue && cfg.maxPubQueue > 0 {
+			flag := true
+			for p := s.pubWaitQueue.Front(); p != nil; p = p.Next() {
+				if pub, ok := p.Value.(*pack.PubPack); ok {
+					// 优先删除Qos=0的消息
+					if pub.Qos == 0 {
+						s.pubWaitQueue.Remove(p)
+						flag = false
+						break
+					}
+				}
+			}
+			if flag {
+				s.pubWaitQueue.Remove(s.pubWaitQueue.Front())
+			}
+		}
+		pubPack.Dup = true
+		s.pubWaitQueue.PushBack(pubPack)
+	}
 	s.pubWaitMutex.Unlock()
 
 }
@@ -74,10 +106,12 @@ func (s *session) PushPubQueue(pubPack *pack.PubPack, c *Client) {
 func (s *session) pubAck(ackPack *pack.PubAckPack) {
 
 	s.pubWaitMutex.Lock()
-	p := s.pubWaitQueue.Front()
-	if pub, ok := p.Value.(*pack.PubPack); ok {
-		if string(pub.Identifier) == string(ackPack.Identifier) {
-			s.pubWaitQueue.Remove(p)
+	if !s.isExpired {
+		p := s.pubWaitQueue.Front()
+		if pub, ok := p.Value.(*pack.PubPack); ok {
+			if string(pub.Identifier) == string(ackPack.Identifier) {
+				s.pubWaitQueue.Remove(p)
+			}
 		}
 	}
 	s.pubWaitMutex.Unlock()
@@ -92,7 +126,6 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 
 	if s.pubWaitQueue.Len() == 0 || s.hasPubTimer == true {
 		s.pubWaitTime = 5 * time.Second
-		s.pubTimer.Reset(s.pubWaitTime)
 		s.pubWaitMutex.Unlock()
 		return
 	} else {
@@ -110,6 +143,9 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 
 				case <-s.pubTimer.C:
 					s.pubWaitMutex.RLock()
+					if s.isExpired {
+						return
+					}
 					if s.pubWaitQueue.Len() > 0 && s.hasPubTimer == true {
 						s.pubWaitTime *= 2
 						s.pubTimer.Reset(s.pubWaitTime)

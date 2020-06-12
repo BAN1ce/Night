@@ -119,3 +119,23 @@ func getClientSession(clientIdentifier string) (*session, bool) {
 		return nil, false
 	}
 }
+
+func (s *Server) CheckSessionExpired() {
+
+	cfg := config.GetConfig()
+	t := time.NewTicker(cfg.sessionExpireInterval)
+	for {
+		<-t.C
+		cfg := config.GetConfig()
+		for _, c := range s.clients {
+			e := time.Duration(time.Now().Unix()-c.session.offlineTime.Unix()) * time.Second
+			if e > cfg.sessionExpiredTime {
+				c.session = nil
+				c.session.Expired()
+			}
+
+		}
+
+	}
+
+}
