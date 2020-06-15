@@ -3,21 +3,21 @@ package pack
 import "live/src/utils"
 
 type ConnectPack struct {
-	pack          *Pack
-	BodyStart     int
+	pack             *Pack
+	BodyStart        int
 	ProtocolName     string
 	ProtocolLevel    int
 	ConnectFlags     byte
 	Reserved         int
 	CleanSession     bool
 	WillFlag         bool
-	WillQos          int
+	WillQos          uint8
 	WillRetain       bool
 	PasswordFlag     bool
 	UserNameFlag     bool
 	ClientIdentifier string
 	WillTopic        string
-	WillMessage      string
+	WillPayload      []byte
 	UserName         string
 	Password         string
 	KeepAlive        int
@@ -36,7 +36,11 @@ func NewConnectPack(p *Pack) *ConnectPack {
 	connectPack.Reserved = int(connectPack.ConnectFlags & 1)
 	connectPack.CleanSession = int((connectPack.ConnectFlags&2)>>1) == 1
 	connectPack.WillFlag = int((connectPack.ConnectFlags&4)>>2) == 1
-	connectPack.WillQos = int((connectPack.ConnectFlags & 24) >> 3)
+	if (connectPack.ConnectFlags&24)>>3 == 0 {
+		connectPack.WillQos = 0
+	} else {
+		connectPack.WillQos = 1
+	}
 	connectPack.WillRetain = int((connectPack.ConnectFlags&32)>>5) == 1
 	connectPack.PasswordFlag = int((connectPack.ConnectFlags&64)>>6) == 1
 	connectPack.UserNameFlag = int((connectPack.ConnectFlags&128)>>7) == 1
@@ -54,7 +58,7 @@ func NewConnectPack(p *Pack) *ConnectPack {
 		plc += willTopicLength
 		willMessageLength := utils.UtfLength(p.rawData[plc : plc+2])
 		plc += 2
-		connectPack.WillMessage = string(p.rawData[plc : willMessageLength+plc])
+		connectPack.WillPayload = p.rawData[plc : willMessageLength+plc]
 		plc += willMessageLength
 	}
 	if connectPack.UserNameFlag == true {
