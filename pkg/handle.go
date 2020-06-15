@@ -128,7 +128,6 @@ func pubAckHandle(c *Client, p *pack.Pack) {
 */
 func subHandle(c *Client, p *pack.Pack) {
 
-	fmt.Println("Sub")
 
 	subPack := pack.NewSubPack(p)
 	qoss := make([]byte, 0, len(subPack.TopicQos))
@@ -154,6 +153,7 @@ func subHandle(c *Client, p *pack.Pack) {
 		}
 	}
 	subAck := pack.NewSubAck(subPack.Identifier, qoss)
+	fmt.Println("Sub -> ",subAck.Identifier,qoss)
 	c.writeChan <- subAck
 }
 
