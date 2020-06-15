@@ -108,9 +108,11 @@ func (s *session) pubAck(ackPack *pack.PubAckPack) {
 	s.pubWaitMutex.Lock()
 	if !s.isExpired {
 		p := s.pubWaitQueue.Front()
-		if pub, ok := p.Value.(*pack.PubPack); ok {
-			if string(pub.Identifier) == string(ackPack.Identifier) {
-				s.pubWaitQueue.Remove(p)
+		if p != nil {
+			if pub, ok := p.Value.(*pack.PubPack); ok {
+				if string(pub.Identifier) == string(ackPack.Identifier) {
+					s.pubWaitQueue.Remove(p)
+				}
 			}
 		}
 	}
