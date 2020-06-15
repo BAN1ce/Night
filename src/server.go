@@ -71,7 +71,7 @@ func (s *Server) Run(ctx context.Context) {
 					log.Println(err)
 					continue
 				} else {
-					s.acceptClient(ctx, conn)
+					go s.acceptClient(ctx, conn)
 				}
 
 			}
