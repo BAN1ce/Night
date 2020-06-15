@@ -128,7 +128,6 @@ func pubAckHandle(c *Client, p *pack.Pack) {
 */
 func subHandle(c *Client, p *pack.Pack) {
 
-
 	subPack := pack.NewSubPack(p)
 	qoss := make([]byte, 0, len(subPack.TopicQos))
 	for topic, qos := range subPack.TopicQos {
@@ -140,9 +139,10 @@ func subHandle(c *Client, p *pack.Pack) {
 		topicSlice := strings.Split(topic, "/")
 		// 客户端模糊订阅和绝对订阅分开记录
 		sub.Sub(topic, c.clientIdentifier, topicSlice)
-
+		fmt.Println("1")
 		retainMessages := sub.GetMessages(topicSlice)
 
+		fmt.Println("1")
 		for topic, message := range retainMessages {
 			pubpack := pack.NewEmptyPubPack()
 			pubpack.Qos = message.Qos
@@ -150,10 +150,12 @@ func subHandle(c *Client, p *pack.Pack) {
 			pubpack.TopicName = []byte(topic)
 			pubpack.Retain = true
 			c.Pub(pubpack, topic)
+			fmt.Println("1")
 		}
 	}
+	fmt.Println("1")
 	subAck := pack.NewSubAck(subPack.Identifier, qoss)
-	fmt.Println("Sub -> ",subAck.Identifier,qoss)
+	fmt.Println("Sub -> ", subAck.Identifier, qoss)
 	c.writeChan <- subAck
 }
 
