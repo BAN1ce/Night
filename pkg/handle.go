@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"fmt"
 	"live/pkg/mqtt/pack"
 	"live/pkg/mqtt/sub"
 	"live/pkg/utils"
@@ -46,6 +47,8 @@ func connectHandle(c *Client, p *pack.Pack) {
 
 	// 客户端连接成功
 	c.writeChan <- connack
+
+	fmt.Println("Connecting ... ")
 
 	if connectPack.CleanSession != true {
 		if oldClient, ok := getClient(c.clientIdentifier); ok {
