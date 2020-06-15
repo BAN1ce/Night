@@ -141,6 +141,7 @@ func subHandle(c *Client, p *pack.Pack) {
 		fmt.Println("1")
 		c.session.SubTopic(topic, qos)
 		topicSlice := strings.Split(topic, "/")
+		fmt.Println("2")
 		// 客户端模糊订阅和绝对订阅分开记录
 		sub.Sub(topic, c.clientIdentifier, topicSlice)
 		fmt.Println("1")
