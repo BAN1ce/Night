@@ -128,13 +128,17 @@ func pubAckHandle(c *Client, p *pack.Pack) {
 */
 func subHandle(c *Client, p *pack.Pack) {
 
+	fmt.Println("1")
+
 	subPack := pack.NewSubPack(p)
 	qoss := make([]byte, 0, len(subPack.TopicQos))
+	fmt.Println("1")
 	for topic, qos := range subPack.TopicQos {
 		if qos >= 2 {
 			qos = 1
 		}
 		qoss = append(qoss, qos)
+		fmt.Println("1")
 		c.session.SubTopic(topic, qos)
 		topicSlice := strings.Split(topic, "/")
 		// 客户端模糊订阅和绝对订阅分开记录
