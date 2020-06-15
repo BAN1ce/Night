@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"live/src"
+	"live/pkg"
 	"net"
 	"os"
 	"os/signal"
@@ -19,7 +19,7 @@ func main() {
 	address := fmt.Sprintf("0.0.0.0:%d", *mqPort)
 
 	netAddr2, _ := net.ResolveTCPAddr("tcp", address)
-	src.NewServer(netAddr2)
+	pkg.NewServer(netAddr2)
 
 	c := make(chan os.Signal)
 	//监听指定信号
