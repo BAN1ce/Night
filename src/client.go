@@ -45,7 +45,7 @@ func NewClient(conn net.Conn, clientDone chan<- string) *Client {
 	c.isOnline = true
 	c.isStop = true
 	c.session = newSession()
-	c.hbTimeout = 30 * time.Second
+	c.hbTimeout = 90 * time.Second
 	return c
 }
 func (c *Client) SetWill(willTopic string, willPayload []byte, willQos uint8) {
