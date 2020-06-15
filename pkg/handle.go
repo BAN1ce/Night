@@ -67,6 +67,8 @@ func connectHandle(c *Client, p *pack.Pack) {
 		}
 	}
 	clientJoinServer(connectPack.ClientIdentifier, c)
+
+	fmt.Println("Connecting ... End ")
 }
 
 /**
@@ -125,6 +127,8 @@ func pubAckHandle(c *Client, p *pack.Pack) {
 客户端订阅
 */
 func subHandle(c *Client, p *pack.Pack) {
+
+	fmt.Println("Sub")
 
 	subPack := pack.NewSubPack(p)
 	qoss := make([]byte, 0, len(subPack.TopicQos))
