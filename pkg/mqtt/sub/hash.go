@@ -74,5 +74,6 @@ func GetHashSub(topic string) []string {
 			nodeClients = append(nodeClients, c)
 		}
 	}
+	localHashSub.mutex.RUnlock()
 	return nodeClients
 }
