@@ -44,7 +44,7 @@ func newSession() *session {
 	s.isExpired = false
 	s.recWaitList = list.New()
 	s.pubWaitQueue = list.New()
-	s.pubWaitInitTime = 2 * time.Second
+	s.pubWaitInitTime = config.qos1WaitTime
 
 	return s
 }
@@ -127,7 +127,7 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 	s.pubWaitMutex.Lock()
 
 	if s.pubWaitQueue.Len() == 0 || s.hasPubTimer == true {
-		s.pubWaitTime = 5 * time.Second
+		s.pubWaitTime = s.pubWaitInitTime
 		s.pubWaitMutex.Unlock()
 		return
 	} else {
@@ -139,7 +139,7 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 			for {
 				select {
 				case <-ctx.Done():
-					s.pubWaitTime = 5 * time.Second
+					s.pubWaitTime = s.pubWaitInitTime
 					s.hasPubTimer = false
 					return
 

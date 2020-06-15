@@ -10,13 +10,15 @@ var config *Config
 func init() {
 	config = newConfig()
 	config.maxPubQueue = 200
-	config.sessionExpiredTime = time.Second * 10
-	config.sessionExpireInterval = time.Second * 5
+	config.sessionExpiredTime = 1440 * time.Minute
+	config.sessionExpireInterval = 120 * time.Second
+	config.qos1WaitTime = 10 * time.Second
 
 }
 
 type Config struct {
 	maxPubQueue           int
+	qos1WaitTime          time.Duration
 	sessionExpiredTime    time.Duration
 	sessionExpireInterval time.Duration
 	mutex                 sync.RWMutex
