@@ -117,7 +117,6 @@ func (c *Client) input(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			close(c.readChan)
 			return
 
 		default:
