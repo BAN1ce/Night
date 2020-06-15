@@ -105,6 +105,8 @@ func (c *Client) Stop() {
 			pubpack.Qos = c.willQos
 			PubPackToSubClients(nodes, clients, pubpack)
 		}
+		close(c.writeChan)
+		close(c.readChan)
 		c.mutex.Unlock()
 	}
 	// 发送遗嘱消息
@@ -161,7 +163,7 @@ func (c *Client) handleWrite(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			close(c.writeChan)
+
 			return
 		case m, ok := <-c.writeChan:
 
