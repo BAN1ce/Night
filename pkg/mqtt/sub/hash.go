@@ -1,7 +1,6 @@
 package sub
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -35,17 +34,13 @@ func newHashSub() *hashSub {
 */
 func AddHashSub(topic, clientIdentifier string) {
 
-	fmt.Println(3, topic)
 	localHashSub.mutex.Lock()
 
 	if _, ok := localHashSub.sub[topic]; ok == false {
 		localHashSub.sub[topic] = make(map[string]bool)
-		fmt.Println(3)
 	}
 	localHashSub.sub[topic][clientIdentifier] = true
-	fmt.Println(3)
 	localHashSub.mutex.Unlock()
-	fmt.Println(3)
 }
 
 /**

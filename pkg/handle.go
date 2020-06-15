@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"fmt"
 	"live/pkg/mqtt/pack"
 	"live/pkg/mqtt/sub"
 	"live/pkg/utils"
@@ -48,7 +47,6 @@ func connectHandle(c *Client, p *pack.Pack) {
 	// 客户端连接成功
 	c.writeChan <- connack
 
-	fmt.Println("Connecting ... ")
 
 	if connectPack.CleanSession != true {
 		if oldClient, ok := getClient(c.clientIdentifier); ok {
@@ -68,7 +66,6 @@ func connectHandle(c *Client, p *pack.Pack) {
 	}
 	clientJoinServer(connectPack.ClientIdentifier, c)
 
-	fmt.Println("Connecting ... End ")
 }
 
 /**
@@ -128,26 +125,20 @@ func pubAckHandle(c *Client, p *pack.Pack) {
 */
 func subHandle(c *Client, p *pack.Pack) {
 
-	fmt.Println("1")
 
 	subPack := pack.NewSubPack(p)
 	qoss := make([]byte, 0, len(subPack.TopicQos))
-	fmt.Println("1")
 	for topic, qos := range subPack.TopicQos {
 		if qos >= 2 {
 			qos = 1
 		}
 		qoss = append(qoss, qos)
-		fmt.Println("1")
 		c.session.SubTopic(topic, qos)
 		topicSlice := strings.Split(topic, "/")
-		fmt.Println("2")
 		// 客户端模糊订阅和绝对订阅分开记录
 		sub.Sub(topic, c.clientIdentifier, topicSlice)
-		fmt.Println("1")
 		retainMessages := sub.GetMessages(topicSlice)
 
-		fmt.Println("1")
 		for topic, message := range retainMessages {
 			pubpack := pack.NewEmptyPubPack()
 			pubpack.Qos = message.Qos
@@ -155,12 +146,9 @@ func subHandle(c *Client, p *pack.Pack) {
 			pubpack.TopicName = []byte(topic)
 			pubpack.Retain = true
 			c.Pub(pubpack, topic)
-			fmt.Println("1")
 		}
 	}
-	fmt.Println("1")
 	subAck := pack.NewSubAck(subPack.Identifier, qoss)
-	fmt.Println("Sub -> ", subAck.Identifier, qoss)
 	c.writeChan <- subAck
 }
 
