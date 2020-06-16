@@ -198,7 +198,7 @@ func (c *Client) write(writePack pack.WritePack) {
 
 func (c *Client) Pub(pubPack *pack.PubPack, subTopic string) {
 
-	emptyPubPack := pack.NewEmptyPubPack()
+	emptyPubPack := getEmptyPub()
 	emptyPubPack.TopicName = pubPack.TopicName
 	emptyPubPack.Payload = pubPack.Payload
 	emptyPubPack.Qos = c.session.getTopicQos(subTopic)
@@ -217,6 +217,8 @@ func (c *Client) Pub(pubPack *pack.PubPack, subTopic string) {
 		}
 	}
 	c.mutex.RUnlock()
+
+	putEmptyPub(emptyPubPack)
 }
 
 func (c *Client) PubStoreSession() {

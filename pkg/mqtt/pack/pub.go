@@ -19,6 +19,7 @@ func NewEmptyPubPack() *PubPack {
 	pubPack := new(PubPack)
 	return pubPack
 }
+
 func NewPubPack(p *Pack) *PubPack {
 
 	pubPack := new(PubPack)
@@ -36,6 +37,36 @@ func NewPubPack(p *Pack) *PubPack {
 	}
 	pubPack.Payload = p.rawData[plc:]
 	return pubPack
+}
+
+/**
+空pubPack转化为来自客户端发送的pubPack
+*/
+func (p *PubPack) emptyToRecPubPack(recP *Pack) {
+
+	p.pack = recP
+	p.Dup = (recP.FixedHeader.ByteOne & 0x08) == 1
+	p.Qos = recP.FixedHeader.ByteOne & 0x06 >> 1
+	p.Retain = (recP.FixedHeader.ByteOne & 0x01) == 1
+	plc := recP.FixedHeader.FixLength
+	topicLength := utils.UtfLength(recP.rawData[plc : plc+2])
+	plc += 2
+	p.TopicName = recP.rawData[plc : plc+topicLength]
+	plc += topicLength
+	if p.Qos > 0 {
+		p.Identifier = recP.rawData[plc : plc+2]
+	}
+	p.Payload = recP.rawData[plc:]
+
+}
+func (p *PubPack) SetEmpty() {
+	p.pack = nil
+	p.Dup = false
+	p.Qos = 0
+	p.Retain = false
+	p.TopicName = nil
+	p.Identifier = nil
+	p.Payload = nil
 }
 
 func (p *PubPack) GetFixHeadByte() byte {
