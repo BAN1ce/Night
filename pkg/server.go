@@ -50,9 +50,9 @@ func NewServer(addr net.Addr) *Server {
  /:/ |:| /\__\  __/:/\/__/ /:/__/_\:\__\ /:/\:\  /\__\     /:/\:\__\
  \/__|:|/:/  / /\/:/  /    \:\  /\ \/__/ \/__\:\/:/  /    /:/  \/__/
      |:/:/  /  \::/__/      \:\ \:\__\        \::/  /    /:/  /     
-     |::/  /    \:\__\       \:\/:/  /        /:/  /     \/__/      
-     /:/  /      \/__/        \::/  /        /:/  /                 
-     \/__/                     \/__/         \/__/                  
+     |::/  /    \:\__\       \:\/:/  /        /:/  /    /:/  /     
+     /:/  /      \/__/        \::/  /        /:/  /    /:/  /             
+     \/__/                     \/__/         \/__/     \/__/            
 
 	`)
 
@@ -114,15 +114,6 @@ func getClient(clientIdentifier string) (*Client, bool) {
 		return c, true
 	} else {
 		LocalServer.mutex.RUnlock()
-		return nil, false
-	}
-}
-
-func getClientSession(clientIdentifier string) (*session, bool) {
-
-	if c, ok := LocalServer.clients[clientIdentifier]; ok {
-		return c.session, true
-	} else {
 		return nil, false
 	}
 }
