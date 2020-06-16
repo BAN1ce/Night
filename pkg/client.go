@@ -208,7 +208,7 @@ func (c *Client) Pub(pubPack *pack.PubPack, subTopic string) {
 		c.session.PushPubQueue(emptyPubPack, c)
 		// 发送消息给客户端，如果客户端在线则延时检查是否ack
 		if c.isOnline {
-			c.writeChan <- emptyPubPack
+			c.write(emptyPubPack)
 			c.session.RunPubTimer(c.ctx, c)
 		}
 	} else {
