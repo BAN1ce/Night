@@ -174,7 +174,7 @@ func (s *session) PubListPack(c *Client) {
 	}
 	for p := s.pubWaitQueue.Front(); p != nil; p = p.Next() {
 		if pub, ok := p.Value.(*pack.PubPack); ok {
-			c.writeChan <- pub
+			c.write(pub)
 		}
 	}
 	s.pubWaitMutex.RUnlock()

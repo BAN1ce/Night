@@ -78,7 +78,7 @@ func pubHandle(c *Client, p *pack.Pack) {
 	if pubPack.Qos == 1 {
 		pubAckPack := pack.NewEmptyPubAckPack(pubPack.Identifier)
 		// 返回pub ack
-		c.writeChan <- pubAckPack
+		c.write(pubAckPack)
 	}
 	for _, node := range nodes {
 		node.Clients.Mu.RLock()
