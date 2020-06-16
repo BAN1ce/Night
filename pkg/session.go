@@ -23,6 +23,7 @@ type session struct {
 	pubWaitQueue    *list.List
 	pubWaitInitTime time.Duration
 	pubWaitTime     time.Duration
+	pubWaitCancel   context.CancelFunc
 
 	mutex      sync.RWMutex
 	identifier uint16
@@ -32,8 +33,7 @@ type session struct {
 	hasPubTimer bool
 	pubTimer    *time.Timer
 	offlineTime time.Time
-
-	isExpired bool
+	isExpired   bool
 }
 
 func newSession() *session {
@@ -115,6 +115,12 @@ func (s *session) pubAck(ackPack *pack.PubAckPack) {
 				}
 			}
 		}
+		// 队列为空时结束回收延迟任务的资源
+		if s.pubWaitQueue.Len() == 0 {
+			s.pubTimer.Stop()
+			s.hasPubTimer = false
+			s.pubWaitCancel() //退出延时任务的G
+		}
 	}
 	s.pubWaitMutex.Unlock()
 }
@@ -124,6 +130,7 @@ func (s *session) pubAck(ackPack *pack.PubAckPack) {
 */
 func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 
+	ctx, s.pubWaitCancel = context.WithCancel(ctx)
 	s.pubWaitMutex.Lock()
 
 	if s.pubWaitQueue.Len() == 0 || s.hasPubTimer == true {
@@ -144,7 +151,7 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 					return
 
 				case <-s.pubTimer.C:
-					s.pubWaitMutex.RLock()
+					s.pubWaitMutex.Lock()
 					if s.isExpired {
 						return
 					}
@@ -152,10 +159,10 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 						s.pubWaitTime *= 2
 						s.pubTimer.Reset(s.pubWaitTime)
 						s.PubListPack(c)
-						s.pubWaitMutex.RUnlock()
+						s.pubWaitMutex.Unlock()
 					} else {
 						s.hasPubTimer = false
-						s.pubWaitMutex.RUnlock()
+						s.pubWaitMutex.Unlock()
 						return
 					}
 				}
