@@ -174,6 +174,9 @@ func (c *Client) handleWrite(ctx context.Context) {
 					} else {
 						// 发送成功
 					}
+					if pubPack, ok := m.(*pack.PubPack); ok {
+						putEmptyPub(pubPack)
+					}
 				}
 				c.mutex.RUnlock()
 			}
@@ -218,7 +221,6 @@ func (c *Client) Pub(pubPack *pack.PubPack, subTopic string) {
 	}
 	c.mutex.RUnlock()
 
-	putEmptyPub(emptyPubPack)
 }
 
 func (c *Client) PubStoreSession() {
