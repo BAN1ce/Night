@@ -184,6 +184,18 @@ func (c *Client) handleWrite(ctx context.Context) {
 	}
 }
 
+func (c *Client) write(writePack pack.WritePack) {
+
+	c.mutex.RLock()
+
+	if !c.isStop {
+		c.writeChan <- writePack
+	}
+	c.mutex.RUnlock()
+	return
+
+}
+
 func (c *Client) Pub(pubPack *pack.PubPack, subTopic string) {
 
 	emptyPubPack := pack.NewEmptyPubPack()

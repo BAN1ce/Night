@@ -45,8 +45,7 @@ func connectHandle(c *Client, p *pack.Pack) {
 	c.clientIdentifier = connectPack.ClientIdentifier
 
 	// 客户端连接成功
-	c.writeChan <- connack
-
+	c.write(connack)
 
 	if connectPack.CleanSession != true {
 		if oldClient, ok := getClient(c.clientIdentifier); ok {
@@ -125,7 +124,6 @@ func pubAckHandle(c *Client, p *pack.Pack) {
 */
 func subHandle(c *Client, p *pack.Pack) {
 
-
 	subPack := pack.NewSubPack(p)
 	qoss := make([]byte, 0, len(subPack.TopicQos))
 	for topic, qos := range subPack.TopicQos {
@@ -149,7 +147,7 @@ func subHandle(c *Client, p *pack.Pack) {
 		}
 	}
 	subAck := pack.NewSubAck(subPack.Identifier, qoss)
-	c.writeChan <- subAck
+	c.write(subAck)
 }
 
 /**
@@ -171,7 +169,7 @@ func unSubHandle(c *Client, p *pack.Pack) {
 	}
 	unsubAckPack := pack.NewUnSubAck(unsubPack.Identifier)
 
-	c.writeChan <- unsubAckPack
+	c.write(unsubAckPack)
 
 }
 
@@ -182,7 +180,7 @@ func pingHandle(c *Client, p *pack.Pack) {
 
 	pingResp := pack.NewPingResp()
 
-	c.writeChan <- pingResp
+	c.write(pingResp)
 }
 
 /**
