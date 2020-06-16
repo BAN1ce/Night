@@ -49,10 +49,10 @@ func NewServer(addr net.Addr) *Server {
   /:/|:|  |__      /::\__\  /:/  \:\  \   /::\  \ ___       /::\  \ 
  /:/ |:| /\__\  __/:/\/__/ /:/__/_\:\__\ /:/\:\  /\__\     /:/\:\__\
  \/__|:|/:/  / /\/:/  /    \:\  /\ \/__/ \/__\:\/:/  /    /:/  \/__/
-     |:/:/  /  \::/__/      \:\ \:\__\        \::/  /    /:/  /     
-     |::/  /    \:\__\       \:\/:/  /        /:/  /     \/__/      
-     /:/  /      \/__/        \::/  /        /:/  /                 
-     \/__/                     \/__/         \/__/                  
+     |:/:/  /  \::/__/      \:\ \:\__\        \::/  /    /:/  /
+     |::/  /    \:\__\       \:\/:/  /        /:/  /    /:/  /     
+     /:/  /      \/__/        \::/  /        /:/  /    /:/  /            
+     \/__/                     \/__/         \/__/     \/__/             
 
 	`)
 
@@ -118,14 +118,6 @@ func getClient(clientIdentifier string) (*Client, bool) {
 	}
 }
 
-func getClientSession(clientIdentifier string) (*session, bool) {
-
-	if c, ok := LocalServer.clients[clientIdentifier]; ok {
-		return c.session, true
-	} else {
-		return nil, false
-	}
-}
 
 func (s *Server) CheckSessionExpired() {
 
