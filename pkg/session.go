@@ -117,7 +117,9 @@ func (s *session) pubAck(ackPack *pack.PubAckPack) {
 		}
 		// 队列为空时结束回收延迟任务的资源
 		if s.pubWaitQueue.Len() == 0 {
-			s.pubTimer.Stop()
+			if s.hasPubTimer == true {
+				s.pubTimer.Stop()
+			}
 			s.hasPubTimer = false
 			s.pubWaitCancel() //退出延时任务的G
 		}
