@@ -172,13 +172,12 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 	s.pubWaitMutex.Unlock()
 }
 
+/**
+发布list中等待ack的消息
+*/
 func (s *session) PubListPack(c *Client) {
 
 	s.pubWaitMutex.RLock()
-	// 队列中有效性时重置定时器
-	if s.pubWaitQueue.Len() > 0 {
-		s.pubTimer.Reset(s.pubWaitInitTime)
-	}
 	for p := s.pubWaitQueue.Front(); p != nil; p = p.Next() {
 		if pub, ok := p.Value.(*pack.PubPack); ok {
 			c.write(pub)
