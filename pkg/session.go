@@ -144,10 +144,11 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 
 		s.hasPubTimer = true
 		s.pubWaitTime = s.pubWaitInitTime
-		if s.pubTimer != nil {
-			s.pubTimer = time.NewTimer(s.pubWaitTime)
-		}
+
 		go func() {
+			if s.pubTimer != nil {
+				s.pubTimer = time.NewTimer(s.pubWaitTime)
+			}
 			for {
 				select {
 				case <-ctx.Done():
