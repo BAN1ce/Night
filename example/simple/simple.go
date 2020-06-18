@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	_ "github.com/mkevac/debugcharts" // 可选，添加后可以查看几个实时图表数据
+	_ "net/http/pprof"                // 必须，引入 pprof 模块
 )
 
 var (
@@ -15,6 +17,15 @@ var (
 )
 
 func main() {
+
+	go func() {
+		// terminal: $ go tool pprof -http=:8081 http://localhost:6060/debug/pprof/heap
+		// web:
+		// 1、http://localhost:8081/ui
+		// 2、http://localhost:6060/debug/charts
+		// 3、http://localhost:6060/debug/pprof
+		log.Println(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
 
 	address := fmt.Sprintf("0.0.0.0:%d", *mqPort)
 
