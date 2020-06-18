@@ -146,8 +146,10 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 		s.pubWaitTime = s.pubWaitInitTime
 
 		go func() {
-			if s.pubTimer != nil {
+			if s.pubTimer == nil {
 				s.pubTimer = time.NewTimer(s.pubWaitTime)
+			} else {
+				s.pubTimer.Reset(s.pubWaitInitTime)
 			}
 			for {
 				select {
