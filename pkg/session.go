@@ -119,9 +119,9 @@ func (s *session) pubAck(ackPack *pack.PubAckPack) {
 		if s.pubWaitQueue.Len() == 0 {
 			if s.hasPubTimer == true {
 				s.pubTimer.Stop()
+				s.pubWaitCancel() //退出延时任务的G
 			}
 			s.hasPubTimer = false
-			s.pubWaitCancel() //退出延时任务的G
 		}
 	}
 	s.pubWaitMutex.Unlock()
@@ -205,5 +205,11 @@ func (s *session) UnsubTopic(topic string) {
 	s.mutex.Lock()
 	delete(s.SubTopicsQos, topic)
 	s.mutex.Unlock()
+
+}
+
+func (s *session) GetPubListLength() int {
+
+	return s.pubWaitQueue.Len()
 
 }
