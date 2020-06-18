@@ -119,7 +119,7 @@ func (s *session) pubAck(ackPack *pack.PubAckPack) {
 		// 队列为空时结束回收延迟任务的资源
 		if s.pubWaitQueue.Len() == 0 {
 			if s.hasPubTimer == true {
-				s.pubTimer.Stop()
+
 				s.pubWaitCancel() //退出延时任务的G
 			}
 			s.hasPubTimer = false
@@ -154,6 +154,7 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 				case <-ctx.Done():
 					s.pubWaitTime = s.pubWaitInitTime
 					s.hasPubTimer = false
+					s.pubTimer.Stop()
 					return
 
 				case <-s.pubTimer.C:
