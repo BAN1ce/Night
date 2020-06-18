@@ -105,6 +105,7 @@ func (s *session) PushPubQueue(pubPack *pack.PubPack, c *Client) {
 */
 func (s *session) pubAck(ackPack *pack.PubAckPack) {
 
+	//fixme 可先获取读锁判断不为0再释放读锁后获取写锁再判断再停止定时器
 	s.pubWaitMutex.Lock()
 	if !s.isExpired {
 		p := s.pubWaitQueue.Front()
@@ -143,7 +144,9 @@ func (s *session) RunPubTimer(ctx context.Context, c *Client) {
 
 		s.hasPubTimer = true
 		s.pubWaitTime = s.pubWaitInitTime
-		s.pubTimer = time.NewTimer(s.pubWaitTime)
+		if s.pubTimer != nil {
+			s.pubTimer = time.NewTimer(s.pubWaitTime)
+		}
 		go func() {
 			for {
 				select {
