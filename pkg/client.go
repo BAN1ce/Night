@@ -114,14 +114,14 @@ func (c *Client) Stop() {
 
 func (c *Client) input(ctx context.Context) {
 
+	scanner := bufio.NewScanner(c.conn)
+	scanner.Split(Input())
 	for {
 		select {
 		case <-ctx.Done():
 			return
 
 		default:
-			scanner := bufio.NewScanner(c.conn)
-			scanner.Split(Input())
 			for scanner.Scan() {
 				c.readChan <- pack.NewPack(scanner.Bytes())
 				if c.hbTimeout > 0 {
