@@ -108,8 +108,7 @@ func (s *session) pubAck(ackPack *pack.PubAckPack) {
 	//fixme 可先获取读锁判断不为0再释放读锁后获取写锁再判断再停止定时器
 	s.pubWaitMutex.Lock()
 	if !s.isExpired {
-		p := s.pubWaitQueue.Front()
-		if p != nil {
+		for p := s.pubWaitQueue.Front(); p != nil; p = p.Next() {
 			if pub, ok := p.Value.(*pack.PubPack); ok {
 				if string(pub.Identifier) == string(ackPack.Identifier) {
 					s.pubWaitQueue.Remove(p)
