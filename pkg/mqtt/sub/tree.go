@@ -140,7 +140,6 @@ func AddTreeSub(topicSlice []string, clientIdentifier string) {
 */
 func GetTreeSub(topicSlice []string) (*Node, bool) {
 
-	return nil, false
 	//fixme 订阅树搜索不需每次从根节点开始搜索，topicSlice长度不同，从不同的节点开始搜索，提升查询效率
 	queue := make([]*Node, 0)
 	queue = append(queue, TreeRoot)
@@ -215,7 +214,6 @@ product/device/get
 func GetWildCards(topicSlice []string) []*Node {
 
 	subNodes := make([]*Node, 0)
-	return subNodes
 	tmp := make([]string, len(topicSlice))
 	for i := 0; i < len(topicSlice); i++ {
 		tmpIndex := 0
